@@ -44,6 +44,7 @@ WINELLOGIT="https://github.com/NelloKudo/osu-winello.git"
 SCRDIR="$(realpath "$(dirname "$0")")"
 # The full path to osu-winello.sh
 SCRPATH="$(realpath "$0")"
+DEPS_CACHE_DIR="${DEPS_CACHE_DIR:-$SCRDIR/deps-cache}"
 
 # Exported global variables
 
@@ -143,6 +144,13 @@ Error() {
 # Shorthand for a lot of functions succeeding
 okay="eval Info Done! && return 0"
 
+cachePathForUrl() {
+    local url="$1"
+    local filename="${url##*/}"
+    [ -z "$filename" ] && filename="cached-dependency"
+    echo "$DEPS_CACHE_DIR/$filename"
+}
+
 wgetcommand="wget -q --show-progress"
 _wget() {
     local url="$1"
@@ -157,15 +165,53 @@ _wget() {
 DownloadFile() {
     local url="$1"
     local output="$2"
+    local cachefile
+    cachefile="$(cachePathForUrl "$url")"
+
+    if [ "${USE_CACHED_DEPS:-0}" = "1" ]; then
+        if [ -s "$cachefile" ]; then
+            Info "Using cached $1 from $cachefile"
+            cp "$cachefile" "$output"
+            return 0
+        fi
+        Error "Cached dependency not found for $url. Run ./osu-winello.sh --download-deps first."
+        return 1
+    fi
+
     Info "Downloading $1 to $2..."
     if [ -n "$wgetcommand" ] && command -v wget >/dev/null 2>&1; then
-        _wget "$url" "$output" && return 0
+        _wget "$url" "$output" && {
+            [ "$output" != "$cachefile" ] && { mkdir -p "$DEPS_CACHE_DIR" && cp "$output" "$cachefile" 2>/dev/null; }
+            return 0
+        }
     fi # fall through to curl
     if command -v curl >/dev/null 2>&1; then
-        curl -sSL "$url" -o "$output" && return 0
+        curl -sSL "$url" -o "$output" && {
+            [ "$output" != "$cachefile" ] && { mkdir -p "$DEPS_CACHE_DIR" && cp "$output" "$cachefile" 2>/dev/null; }
+            return 0
+        }
     fi
     Error "Failed to download $url. Check your connection."
     return 1
+}
+
+downloadDeps() {
+    mkdir -p "$DEPS_CACHE_DIR"
+    local deps=(
+        "$WINELINK"
+        "$YAWLLINK"
+        "$PREFIXLINK"
+        "$OSUDOWNLOADURL"
+        "$OSUMIMELINK"
+        "$DISCRPCLINK"
+        "$WINETRICKSLINK"
+    )
+    local dep
+    for dep in "${deps[@]}"; do
+        DownloadFile "$dep" "$(cachePathForUrl "$dep")" || return 1
+    done
+    Info "Dependencies cached at $DEPS_CACHE_DIR"
+    return 0
 }
 
 # Function looking for basic stuff needed for installation
@@ -203,8 +249,12 @@ InitialSetup() {
     fi
 
     # Well, we do need internet ig...
-    Info "Checking for internet connection.."
-    ! ping -c 2 1.1.1.1 >/dev/null 2>&1 && ! ping -c 2 google.com >/dev/null 2>&1 && InstallError "Please connect to internet before continuing xd. Run the script again"
+    if [ -z "${SKIP_NETWORK_CHECKS:-}" ]; then
+        Info "Checking for internet connection.."
+        ! ping -c 2 1.1.1.1 >/dev/null 2>&1 && ! ping -c 2 google.com >/dev/null 2>&1 && InstallError "Please connect to internet before continuing xd. Run the script again"
+    else
+        Info "Skipping internet connection check (using cached dependencies).."
+    fi
 
     # Looking for dependencies..
     deps=(pgrep realpath wget zenity unzip)
@@ -963,6 +1013,8 @@ WineCachySetup() {
 # Help!
 Help() {
     Info "To install the game, run ./osu-winello.sh
+          To download dependencies for offline install, run ./osu-winello.sh --download-deps
+          To install using cached dependencies, run ./osu-winello.sh install-with-cache
           To uninstall the game, run ./osu-winello.sh uninstall
           To retry installing yawl-related files, run ./osu-winello.sh fixyawl
           You can read more at README.md or https://github.com/NelloKudo/osu-winello"
@@ -976,6 +1028,20 @@ Help() {
 
 case "$1" in
 '')
+    {
+        InitialSetup &&
+            InstallWine &&
+            FullInstall
+    } || exit 1
+    ;;
+
+'--download-deps')
+    downloadDeps || exit 1
+    ;;
+
+'install-with-cache')
+    USE_CACHED_DEPS=1
+    SKIP_NETWORK_CHECKS=1
     {
         InitialSetup &&
             InstallWine &&
