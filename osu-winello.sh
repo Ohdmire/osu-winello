@@ -199,6 +199,7 @@ downloadDeps() {
     mkdir -p "$DEPS_CACHE_DIR"
     local deps=(
         "$WINELINK"
+        "$WINECACHYLINK"
         "$YAWLLINK"
         "$PREFIXLINK"
         "$OSUDOWNLOADURL"
@@ -612,7 +613,11 @@ installYawl() {
 
     # Also setup yawl here, this will be required anyways when updating from umu-based osu-wine versions
     YAWL_VERBS="make_wrapper=winello;exec=$WINE_INSTALL_PATH/bin/wine;wineserver=$WINE_INSTALL_PATH/bin/wineserver" "$YAWL_INSTALL_PATH"
-    YAWL_VERBS="update;verify;exec=/bin/true" "$YAWL_INSTALL_PATH" || { Error "There was an error setting up yawl!" && return 1; }
+    if [ -z "${OFFLINE_INSTALL:-}" ]; then
+        YAWL_VERBS="update;verify;exec=/bin/true" "$YAWL_INSTALL_PATH" || { Error "There was an error setting up yawl!" && return 1; }
+    else
+        Info "Skipping yawl update/verify (offline install)."
+    fi
     $okay
 }
 
@@ -1042,6 +1047,7 @@ case "$1" in
 'install-with-cache')
     USE_CACHED_DEPS=1
     SKIP_NETWORK_CHECKS=1
+    OFFLINE_INSTALL=1
     {
         InitialSetup &&
             InstallWine &&
