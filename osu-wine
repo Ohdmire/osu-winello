@@ -78,7 +78,9 @@ Help() {
     osu-wine --osuhandler <beatmap, skin..>: Launches osu-handler-wine with the specified file/link
     osu-wine --gosumemory: Installs and runs gosumemory without any needed config!
     osu-wine --tosu: Installs and runs tosu without any needed config!
-    osu-wine --disable-memory-reader: Turn off gosumemory and tosu"
+    osu-wine --disable-memory-reader: Turn off gosumemory and tosu
+    osu-wine --akatsuki: Installs and runs Akatsuki patcher
+    osu-wine --mappingtools: Installs and runs osu! Mapping Tools (experimental, WINE_USE_CACHY=true recommended)"
 }
 
 # Won't return failure if there's no internet connection, but tries to update the main script first before calling the function
@@ -115,6 +117,7 @@ MainScript() {
 if [ "$WINE_USE_CACHY" == "true" ]; then
     MainScript winecachy-setup
     export WINE="$XDG_DATA_HOME/osuconfig/yawl-winello-cachy"
+    export WINE_INSTALL_PATH="$XDG_DATA_HOME/osuconfig/wine-osu-cachy-10.0"
 fi
 
 LaunchOsu() {
@@ -297,6 +300,12 @@ case "$1" in
 
 '--akatsuki')
     MainScript "akatsukiPatcher" || ErrorAndExit "Couldn't launch akatsuki patcher..."
+    ;;
+
+    ###################################################################################################
+
+'--mappingtools')
+    MainScript "mappingTools" || ErrorAndExit "Couldn't launch Mapping Tools..."
     ;;
 
     ###################################################################################################
