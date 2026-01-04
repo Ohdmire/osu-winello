@@ -14,9 +14,58 @@ PATCH=4
 WINEVERSION=$MAJOR.$MINOR-$PATCH
 LASTWINEVERSION=0
 
+# GitHub mirror configuration (override GITHUB_BASE_URL to use a proxy)
+DEFAULT_GITHUB_BASE="https://github.com/"
+# Detect interactive mirror selection if user did not predefine a value
+selectGithubMirror() {
+    [ -n "${GITHUB_BASE_URL:-}" ] && return 0
+    cat <<'EOF'
+请选择 GitHub 镜像 (按 Enter 为默认的官方 https://github.com/):
+  1) edgeone 全球加速
+  2) cloudflare 主站全球加速 (gh-proxy.org)
+  3) cloudflare 主站IPV6 (v6.gh-proxy.org)
+  4) 香港优化线路 (hk.gh-proxy.org)
+  5) Fastly CDN (cdn.gh-proxy.org)
+  0) 不使用镜像 (官方源)
+EOF
+    printf "输入序号 [默认0]: "
+    read -r mirror_choice
+    case "$mirror_choice" in
+    1)
+        GITHUB_BASE_URL="https://edgeone.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
+        ;;
+    2)
+        GITHUB_BASE_URL="https://gh-proxy.org/${DEFAULT_GITHUB_BASE}"
+        ;;
+    3)
+        GITHUB_BASE_URL="https://v6.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
+        ;;
+    4)
+        GITHUB_BASE_URL="https://hk.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
+        ;;
+    5)
+        GITHUB_BASE_URL="https://cdn.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
+        ;;
+    *)
+        GITHUB_BASE_URL="$DEFAULT_GITHUB_BASE"
+        ;;
+    esac
+    if [ "$GITHUB_BASE_URL" = "$DEFAULT_GITHUB_BASE" ]; then
+        printf "使用官方 GitHub 源。\n"
+    else
+        printf "GitHub 镜像已切换到: %s\n" "$GITHUB_BASE_URL"
+    fi
+}
+selectGithubMirror
+GITHUB_BASE_URL="${GITHUB_BASE_URL:-$DEFAULT_GITHUB_BASE}"
+case "$GITHUB_BASE_URL" in
+    */) ;;
+    *) GITHUB_BASE_URL="${GITHUB_BASE_URL}/" ;;
+esac
+
 # Wine-osu mirror
-WINELINK="https://github.com/NelloKudo/WineBuilder/releases/download/wine-osu-staging-${WINEVERSION}/wine-osu-winello-fonts-wow64-${WINEVERSION}-x86_64.tar.xz"
-WINECACHYLINK="https://github.com/NelloKudo/WineBuilder/releases/download/wine-osu-cachyos-v10.0-3/wine-osu-cachy-winello-fonts-wow64-10.0-3-x86_64.tar.xz"
+WINELINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-staging-${WINEVERSION}/wine-osu-winello-fonts-wow64-${WINEVERSION}-x86_64.tar.xz"
+WINECACHYLINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-cachyos-v10.0-3/wine-osu-cachy-winello-fonts-wow64-10.0-3-x86_64.tar.xz"
 
 # Other versions for external downloads
 DISCRPCBRIDGEVERSION=1.2
@@ -27,20 +76,20 @@ MAPPINGTOOLSVERSION=1.12.27
 
 # Other download links
 WINETRICKSLINK="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"                 # Winetricks for --fixprefix
-PREFIXLINK="https://github.com/NelloKudo/osu-winello/releases/download/winello-bins/osu-winello-prefix.tar.xz" # Default WINEPREFIX
-OSUMIMELINK="https://github.com/NelloKudo/osu-winello/releases/download/winello-bins/osu-mime.tar.gz"          # osu-mime (file associations)
-YAWLLINK="https://github.com/whrvt/yawl/releases/download/v${YAWLVERSION}/yawl"                                # yawl (Wine launcher for Steam Runtime)
+PREFIXLINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-winello-prefix.tar.xz" # Default WINEPREFIX
+OSUMIMELINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-mime.tar.gz"          # osu-mime (file associations)
+YAWLLINK="${GITHUB_BASE_URL}whrvt/yawl/releases/download/v${YAWLVERSION}/yawl"                                # yawl (Wine launcher for Steam Runtime)
 
 OSUDOWNLOADURL="https://m1.ppy.sh/r/osu!install.exe"
 
-DISCRPCLINK="https://github.com/EnderIce2/rpc-bridge/releases/download/v${DISCRPCBRIDGEVERSION}/bridge.zip"
-GOSUMEMORYLINK="https://github.com/l3lackShark/gosumemory/releases/download/${GOSUMEMORYVERSION}/gosumemory_windows_amd64.zip"
-TOSULINK="https://github.com/tosuapp/tosu/releases/download/v${TOSUVERSION}/tosu-windows-v${TOSUVERSION}.zip"
+DISCRPCLINK="${GITHUB_BASE_URL}EnderIce2/rpc-bridge/releases/download/v${DISCRPCBRIDGEVERSION}/bridge.zip"
+GOSUMEMORYLINK="${GITHUB_BASE_URL}l3lackShark/gosumemory/releases/download/${GOSUMEMORYVERSION}/gosumemory_windows_amd64.zip"
+TOSULINK="${GITHUB_BASE_URL}tosuapp/tosu/releases/download/v${TOSUVERSION}/tosu-windows-v${TOSUVERSION}.zip"
 AKATSUKILINK="https://air_conditioning.akatsuki.gg/loader"
-MAPPINGTOOLSLINK="https://github.com/OliBomby/Mapping_Tools/releases/download/v${MAPPINGTOOLSVERSION}/mapping_tools_installer_x64.exe"
+MAPPINGTOOLSLINK="${GITHUB_BASE_URL}OliBomby/Mapping_Tools/releases/download/v${MAPPINGTOOLSVERSION}/mapping_tools_installer_x64.exe"
 
 # The URL for our git repo
-WINELLOGIT="https://github.com/NelloKudo/osu-winello.git"
+WINELLOGIT="${GITHUB_BASE_URL}NelloKudo/osu-winello.git"
 
 # The directory osu-winello.sh is in
 SCRDIR="$(realpath "$(dirname "$0")")"
@@ -254,7 +303,7 @@ InitialSetup() {
     # Well, we do need internet ig...
     if [ -z "${SKIP_NETWORK_CHECKS:-}" ]; then
         Info "Checking for internet connection.."
-        ! ping -c 2 1.1.1.1 >/dev/null 2>&1 && ! ping -c 2 google.com >/dev/null 2>&1 && InstallError "Please connect to internet before continuing xd. Run the script again"
+        ! ping -c 2 114.114.114.114 >/dev/null 2>&1 && ! ping -c 2 baidu.com >/dev/null 2>&1 && InstallError "Please connect to internet before continuing xd. Run the script again"
     else
         Info "Skipping internet connection check (using cached dependencies).."
     fi
@@ -381,7 +430,7 @@ FullInstall() {
     # So if there's no prefix (or the user wants to reinstall):
     if [ ! -r "$XDG_DATA_HOME/wineprefixes/osu-wineprefix/system.reg" ]; then
         # Downloading prefix in temporary ~/.winellotmp folder
-        # to make up for this issue: https://github.com/NelloKudo/osu-winello/issues/36
+        # to make up for this issue: see osu-winello issue #36
         mkdir -p "$HOME/.winellotmp"
         DownloadFile "${PREFIXLINK}" "$HOME/.winellotmp/osu-winello-prefix.tar.xz" || Revert
 
@@ -831,7 +880,7 @@ akatsukiPatcher() {
     return 0
 }
 
-# Installs osu! Mapping Tools (https://github.com/olibomby/mapping_tools)
+# Installs osu! Mapping Tools (olibomby/mapping_tools)
 mappingTools() {
     local MAPPINGTOOLSPATH="${WINEPREFIX}/drive_c/Program Files/Mapping Tools"
     local OSUPID
@@ -867,7 +916,7 @@ mappingTools() {
     fi
 }
 
-# Installs rpc-bridge for Discord RPC (https://github.com/EnderIce2/rpc-bridge)
+# Installs rpc-bridge for Discord RPC (EnderIce2/rpc-bridge)
 discordRpc() {
     Info "Setting up Discord RPC integration..."
     if [ -f "${WINEPREFIX}/drive_c/windows/bridge.exe" ]; then
@@ -928,7 +977,7 @@ osuHandlerSetup() {
     rm -f "/tmp/osu-mime.tar.gz"
     rm -rf "/tmp/osu-mime"
 
-    # Installing osu-handler from https://github.com/openglfreak/osu-handler-wine / https://aur.archlinux.org/packages/osu-handler
+    # Installing osu-handler from openglfreak/osu-handler-wine / https://aur.archlinux.org/packages/osu-handler
     # Binary was compiled from source on Ubuntu 18.04
     chmod +x "$XDG_DATA_HOME/osuconfig/update/stuff/osu-handler-wine"
 
@@ -1060,7 +1109,7 @@ Help() {
           To install using cached dependencies, run ./osu-winello.sh install-with-cache
           To uninstall the game, run ./osu-winello.sh uninstall
           To retry installing yawl-related files, run ./osu-winello.sh fixyawl
-          You can read more at README.md or https://github.com/NelloKudo/osu-winello"
+          You can read more at README.md or ${GITHUB_BASE_URL}NelloKudo/osu-winello"
 }
 
 #   =====================================
