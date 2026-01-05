@@ -396,14 +396,14 @@ Categories=Wine;Game;" | tee "$XDG_DATA_HOME/applications/osu-wine.desktop" >/de
     # with latest values from GitHub and check whether to update or not
     Info "Installing script copy for updates.."
     mkdir -p "$XDG_DATA_HOME/osuconfig/update"
-    if git -C "$SCRDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        git clone "$SCRDIR" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed while cloning local sources."
-    elif [ "${USE_CACHED_DEPS:-0}" = "1" ] || [ -n "${OFFLINE_INSTALL:-}" ]; then
-        [ -d "$OSU_WINELLO_REPO_CACHE" ] || InstallError "Cached osu-winello repo not found. Run ./osu-winello.sh --download-deps first."
-        git clone "$OSU_WINELLO_REPO_CACHE" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed while cloning cached sources."
-    else
-        git clone "${WINELLOGIT}" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed, check your connection.."
-    fi
+    (
+        cd "$SCRDIR" || exit 1
+        if [ -z "${OFFLINE_INSTALL:-}" ] && [ "${USE_CACHED_DEPS:-0}" != "1" ]; then
+            { git clone . "$XDG_DATA_HOME/osuconfig/update" || git clone "${WINELLOGIT}" "$XDG_DATA_HOME/osuconfig/update"; }
+        else
+            git clone . "$XDG_DATA_HOME/osuconfig/update"
+        fi
+    ) || InstallError "Git failed, check your connection.."
 
     git -C "$XDG_DATA_HOME/osuconfig/update" remote set-url origin "${WINELLOGIT}"
 
