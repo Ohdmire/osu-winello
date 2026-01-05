@@ -94,6 +94,7 @@ setGithubLinks
 WINETRICKSLINK="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" # Winetricks for --fixprefix
 OSUDOWNLOADURL="https://m1.ppy.sh/r/osu!install.exe"
 AKATSUKILINK="https://air_conditioning.akatsuki.gg/loader"
+STEAMRUNTIMELINK="https://repo.steampowered.com/steamrt-images-sniper/snapshots/latest-container-runtime-depot/SteamLinuxRuntime_sniper.tar.xz"
 
 # The directory osu-winello.sh is in
 SCRDIR="$(realpath "$(dirname "$0")")"
@@ -280,6 +281,7 @@ downloadDeps() {
         "$OSUMIMELINK"
         "$DISCRPCLINK"
         "$WINETRICKSLINK"
+        "$STEAMRUNTIMELINK"
     )
     local dep
     for dep in "${deps[@]}"; do
