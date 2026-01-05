@@ -14,59 +14,6 @@ PATCH=4
 WINEVERSION=$MAJOR.$MINOR-$PATCH
 LASTWINEVERSION=0
 
-# GitHub mirror configuration (override GITHUB_BASE_URL to use a proxy)
-DEFAULT_GITHUB_BASE="https://github.com/"
-# Detect interactive mirror selection if user did not predefine a value
-selectGithubMirror() {
-    [ -n "${GITHUB_BASE_URL:-}" ] && return 0
-    cat <<'EOF'
-请选择 GitHub 镜像 (按 Enter 为默认的官方 https://github.com/):
-  1) edgeone 全球加速
-  2) cloudflare 主站全球加速 (gh-proxy.org)
-  3) cloudflare 主站IPV6 (v6.gh-proxy.org)
-  4) 香港优化线路 (hk.gh-proxy.org)
-  5) Fastly CDN (cdn.gh-proxy.org)
-  0) 不使用镜像 (官方源)
-EOF
-    printf "输入序号 [默认0]: "
-    read -r mirror_choice
-    case "$mirror_choice" in
-    1)
-        GITHUB_BASE_URL="https://edgeone.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
-        ;;
-    2)
-        GITHUB_BASE_URL="https://gh-proxy.org/${DEFAULT_GITHUB_BASE}"
-        ;;
-    3)
-        GITHUB_BASE_URL="https://v6.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
-        ;;
-    4)
-        GITHUB_BASE_URL="https://hk.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
-        ;;
-    5)
-        GITHUB_BASE_URL="https://cdn.gh-proxy.org/${DEFAULT_GITHUB_BASE}"
-        ;;
-    *)
-        GITHUB_BASE_URL="$DEFAULT_GITHUB_BASE"
-        ;;
-    esac
-    if [ "$GITHUB_BASE_URL" = "$DEFAULT_GITHUB_BASE" ]; then
-        printf "使用官方 GitHub 源。\n"
-    else
-        printf "GitHub 镜像已切换到: %s\n" "$GITHUB_BASE_URL"
-    fi
-}
-selectGithubMirror
-GITHUB_BASE_URL="${GITHUB_BASE_URL:-$DEFAULT_GITHUB_BASE}"
-case "$GITHUB_BASE_URL" in
-    */) ;;
-    *) GITHUB_BASE_URL="${GITHUB_BASE_URL}/" ;;
-esac
-
-# Wine-osu mirror
-WINELINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-staging-${WINEVERSION}/wine-osu-winello-fonts-wow64-${WINEVERSION}-x86_64.tar.xz"
-WINECACHYLINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-cachyos-v10.0-3/wine-osu-cachy-winello-fonts-wow64-10.0-3-x86_64.tar.xz"
-
 # Other versions for external downloads
 DISCRPCBRIDGEVERSION=1.2
 GOSUMEMORYVERSION=1.3.9
@@ -74,28 +21,87 @@ TOSUVERSION=4.3.1
 YAWLVERSION=0.8.2
 MAPPINGTOOLSVERSION=1.12.27
 
+# GitHub mirror configuration (override GITHUB_BASE_URL to use a proxy)
+DEFAULT_GITHUB_BASE="https://github.com/"
+if [ -z "${GITHUB_BASE_URL+x}" ]; then
+    GITHUB_BASE_URL="$DEFAULT_GITHUB_BASE"
+    GITHUB_MIRROR_SELECTED=0
+else
+    [ -z "$GITHUB_BASE_URL" ] && GITHUB_BASE_URL="$DEFAULT_GITHUB_BASE"
+    GITHUB_MIRROR_SELECTED=1
+fi
+
+normalizeGithubBase() {
+    case "$GITHUB_BASE_URL" in
+        */) ;;
+        *) GITHUB_BASE_URL="${GITHUB_BASE_URL}/" ;;
+    esac
+}
+
+setGithubLinks() {
+    WINELINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-staging-${WINEVERSION}/wine-osu-winello-fonts-wow64-${WINEVERSION}-x86_64.tar.xz"
+    WINECACHYLINK="${GITHUB_BASE_URL}NelloKudo/WineBuilder/releases/download/wine-osu-cachyos-v10.0-3/wine-osu-cachy-winello-fonts-wow64-10.0-3-x86_64.tar.xz"
+    PREFIXLINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-winello-prefix.tar.xz"
+    OSUMIMELINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-mime.tar.gz"
+    YAWLLINK="${GITHUB_BASE_URL}whrvt/yawl/releases/download/v${YAWLVERSION}/yawl"
+    DISCRPCLINK="${GITHUB_BASE_URL}EnderIce2/rpc-bridge/releases/download/v${DISCRPCBRIDGEVERSION}/bridge.zip"
+    GOSUMEMORYLINK="${GITHUB_BASE_URL}l3lackShark/gosumemory/releases/download/${GOSUMEMORYVERSION}/gosumemory_windows_amd64.zip"
+    TOSULINK="${GITHUB_BASE_URL}tosuapp/tosu/releases/download/v${TOSUVERSION}/tosu-windows-v${TOSUVERSION}.zip"
+    MAPPINGTOOLSLINK="${GITHUB_BASE_URL}OliBomby/Mapping_Tools/releases/download/v${MAPPINGTOOLSVERSION}/mapping_tools_installer_x64.exe"
+    WINELLOGIT="${GITHUB_BASE_URL}NelloKudo/osu-winello.git"
+}
+
+selectGithubMirror() {
+    cat <<EOF
+请选择 GitHub 镜像 (按 Enter 为默认的官方 ${DEFAULT_GITHUB_BASE}):
+  1) edgeone 全球加速 / 数据统计
+  2) cloudflare 主站 (gh-proxy.org)
+  3) cloudflare 主站 IPV6 (v6.gh-proxy.org)
+  4) 香港优化线路 (hk.gh-proxy.org)
+  5) Fastly CDN (cdn.gh-proxy.org)
+  0) 不使用镜像 (官方源)
+EOF
+    printf "输入序号 [默认0]: "
+    read -r mirror_choice
+    case "$mirror_choice" in
+    1) GITHUB_BASE_URL="https://edgeone.gh-proxy.org/${DEFAULT_GITHUB_BASE}" ;;
+    2) GITHUB_BASE_URL="https://gh-proxy.org/${DEFAULT_GITHUB_BASE}" ;;
+    3) GITHUB_BASE_URL="https://v6.gh-proxy.org/${DEFAULT_GITHUB_BASE}" ;;
+    4) GITHUB_BASE_URL="https://hk.gh-proxy.org/${DEFAULT_GITHUB_BASE}" ;;
+    5) GITHUB_BASE_URL="https://cdn.gh-proxy.org/${DEFAULT_GITHUB_BASE}" ;;
+    *) GITHUB_BASE_URL="$DEFAULT_GITHUB_BASE" ;;
+    esac
+    normalizeGithubBase
+    setGithubLinks
+    GITHUB_MIRROR_SELECTED=1
+    if [ "$GITHUB_BASE_URL" = "$DEFAULT_GITHUB_BASE" ]; then
+        printf "使用官方 GitHub 源。\n"
+    else
+        printf "GitHub 镜像已切换到: %s\n" "$GITHUB_BASE_URL"
+    fi
+}
+
+maybeSelectGithubMirror() {
+    [ "${USE_CACHED_DEPS:-0}" = "1" ] && return 0
+    [ "${GITHUB_MIRROR_SELECTED:-0}" = "1" ] && return 0
+    selectGithubMirror
+}
+
+normalizeGithubBase
+setGithubLinks
+
 # Other download links
-WINETRICKSLINK="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"                 # Winetricks for --fixprefix
-PREFIXLINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-winello-prefix.tar.xz" # Default WINEPREFIX
-OSUMIMELINK="${GITHUB_BASE_URL}NelloKudo/osu-winello/releases/download/winello-bins/osu-mime.tar.gz"          # osu-mime (file associations)
-YAWLLINK="${GITHUB_BASE_URL}whrvt/yawl/releases/download/v${YAWLVERSION}/yawl"                                # yawl (Wine launcher for Steam Runtime)
-
+WINETRICKSLINK="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" # Winetricks for --fixprefix
 OSUDOWNLOADURL="https://m1.ppy.sh/r/osu!install.exe"
-
-DISCRPCLINK="${GITHUB_BASE_URL}EnderIce2/rpc-bridge/releases/download/v${DISCRPCBRIDGEVERSION}/bridge.zip"
-GOSUMEMORYLINK="${GITHUB_BASE_URL}l3lackShark/gosumemory/releases/download/${GOSUMEMORYVERSION}/gosumemory_windows_amd64.zip"
-TOSULINK="${GITHUB_BASE_URL}tosuapp/tosu/releases/download/v${TOSUVERSION}/tosu-windows-v${TOSUVERSION}.zip"
 AKATSUKILINK="https://air_conditioning.akatsuki.gg/loader"
-MAPPINGTOOLSLINK="${GITHUB_BASE_URL}OliBomby/Mapping_Tools/releases/download/v${MAPPINGTOOLSVERSION}/mapping_tools_installer_x64.exe"
-
-# The URL for our git repo
-WINELLOGIT="${GITHUB_BASE_URL}NelloKudo/osu-winello.git"
 
 # The directory osu-winello.sh is in
 SCRDIR="$(realpath "$(dirname "$0")")"
 # The full path to osu-winello.sh
 SCRPATH="$(realpath "$0")"
 DEPS_CACHE_DIR="${DEPS_CACHE_DIR:-$SCRDIR/deps-cache}"
+OSU_WINELLO_REPO_CACHE="${DEPS_CACHE_DIR}/osu-winello.git"
+STEAM_RUNTIME_ARCHIVE="${STEAM_RUNTIME_ARCHIVE:-$DEPS_CACHE_DIR/SteamLinuxRuntime_sniper.tar.xz}"
 
 # Exported global variables
 
@@ -246,7 +252,24 @@ DownloadFile() {
     return 1
 }
 
+cacheOsuWinelloRepo() {
+    if ! command -v git >/dev/null 2>&1; then
+        Error "git is required to cache the osu-winello repository."
+        return 1
+    fi
+
+    if [ -d "$OSU_WINELLO_REPO_CACHE" ]; then
+        Info "Updating cached osu-winello repository at $OSU_WINELLO_REPO_CACHE"
+        git -C "$OSU_WINELLO_REPO_CACHE" fetch --all --prune || return 1
+    else
+        Info "Caching osu-winello repository..."
+        git clone --mirror "${WINELLOGIT}" "$OSU_WINELLO_REPO_CACHE" || return 1
+    fi
+    return 0
+}
+
 downloadDeps() {
+    maybeSelectGithubMirror
     mkdir -p "$DEPS_CACHE_DIR"
     local deps=(
         "$WINELINK"
@@ -262,6 +285,7 @@ downloadDeps() {
     for dep in "${deps[@]}"; do
         DownloadFile "$dep" "$(cachePathForUrl "$dep")" || return 1
     done
+    cacheOsuWinelloRepo || return 1
     Info "Dependencies cached at $DEPS_CACHE_DIR"
     return 0
 }
@@ -329,6 +353,7 @@ waitWine() {
 
 # Function to install script files, yawl and Wine-osu
 InstallWine() {
+    maybeSelectGithubMirror
     # Installing game launcher and related...
     Info "Installing game script:"
     cp "${SCRDIR}/osu-wine" "$BINDIR/osu-wine" && chmod +x "$BINDIR/osu-wine"
@@ -371,9 +396,14 @@ Categories=Wine;Game;" | tee "$XDG_DATA_HOME/applications/osu-wine.desktop" >/de
     # with latest values from GitHub and check whether to update or not
     Info "Installing script copy for updates.."
     mkdir -p "$XDG_DATA_HOME/osuconfig/update"
-
-    { git clone . "$XDG_DATA_HOME/osuconfig/update" || git clone "${WINELLOGIT}" "$XDG_DATA_HOME/osuconfig/update"; } ||
-        InstallError "Git failed, check your connection.."
+    if git -C "$SCRDIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        git clone "$SCRDIR" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed while cloning local sources."
+    elif [ "${USE_CACHED_DEPS:-0}" = "1" ] || [ -n "${OFFLINE_INSTALL:-}" ]; then
+        [ -d "$OSU_WINELLO_REPO_CACHE" ] || InstallError "Cached osu-winello repo not found. Run ./osu-winello.sh --download-deps first."
+        git clone "$OSU_WINELLO_REPO_CACHE" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed while cloning cached sources."
+    else
+        git clone "${WINELLOGIT}" "$XDG_DATA_HOME/osuconfig/update" || InstallError "Git failed, check your connection.."
+    fi
 
     git -C "$XDG_DATA_HOME/osuconfig/update" remote set-url origin "${WINELLOGIT}"
 
@@ -563,7 +593,7 @@ reconfigurePrefix() {
 
     [ -n "${freshprefix}" ] && {
         Info "Checking for internet connection.." # The bundled prefix install already checks for internet, so no point checking again
-        ! ping -c 2 1.1.1.1 >/dev/null 2>&1 && { Error "Please connect to internet before continuing xd. Run the script again" && return 1; }
+        ! ping -c 2 114.114.114.114 >/dev/null 2>&1 && { Error "Please connect to internet before continuing xd. Run the script again" && return 1; }
 
         [ -d "${WINEPREFIX:?}" ] && rm -rf "${WINEPREFIX}"
 
@@ -656,18 +686,44 @@ launcherUpdate() {
     $okay
 }
 
+extractSteamRuntimeForYawl() {
+    local dest_dir
+    dest_dir="${XDG_DATA_HOME}/yawl"
+    local runtime_dir="$dest_dir/SteamLinuxRuntime_sniper"
+
+    if [ ! -s "$STEAM_RUNTIME_ARCHIVE" ]; then
+        Error "Steam runtime archive not found at $STEAM_RUNTIME_ARCHIVE"
+        return 1
+    fi
+
+    if [ -d "$runtime_dir" ]; then
+        Info "Steam runtime already extracted at $runtime_dir, skipping manual extraction."
+        return 0
+    fi
+
+    Info "Extracting SteamLinuxRuntime_sniper.tar.xz into $dest_dir..."
+    mkdir -p "$dest_dir"
+    tar -xf "$STEAM_RUNTIME_ARCHIVE" -C "$dest_dir" || { Error "Failed to extract SteamLinuxRuntime_sniper.tar.xz" && return 1; }
+    return 0
+}
+
 installYawl() {
     Info "Installing yawl..."
     DownloadFile "$YAWLLINK" "/tmp/yawl" || return 1
     mv "/tmp/yawl" "$XDG_DATA_HOME/osuconfig"
     chmod +x "$YAWL_INSTALL_PATH"
 
+    if [ -n "${OFFLINE_INSTALL:-}" ] || [ "${USE_CACHED_DEPS:-0}" = "1" ]; then
+        extractSteamRuntimeForYawl || return 1
+    fi
+
     # Also setup yawl here, this will be required anyways when updating from umu-based osu-wine versions
     YAWL_VERBS="make_wrapper=winello;exec=$WINE_INSTALL_PATH/bin/wine;wineserver=$WINE_INSTALL_PATH/bin/wineserver" "$YAWL_INSTALL_PATH"
     if [ -z "${OFFLINE_INSTALL:-}" ]; then
         YAWL_VERBS="update;verify;exec=/bin/true" "$YAWL_INSTALL_PATH" || { Error "There was an error setting up yawl!" && return 1; }
     else
-        Info "Skipping yawl update/verify (offline install)."
+        Info "Offline install detected, skipping yawl update step."
+        YAWL_VERBS="verify;exec=/bin/true" "$YAWL_INSTALL_PATH" || { Error "There was an error setting up yawl!" && return 1; }
     fi
     $okay
 }
@@ -1080,7 +1136,12 @@ FixYawl() {
     fi
 
     Info "Fixing yawl..."
-    YAWL_VERBS="update;verify;exec=/bin/true" "$YAWL_INSTALL_PATH" && chk=$?
+    if [ -z "${OFFLINE_INSTALL:-}" ]; then
+        YAWL_VERBS="update;verify;exec=/bin/true" "$YAWL_INSTALL_PATH" && chk=$?
+    else
+        Info "Offline install detected, skipping yawl update step."
+        YAWL_VERBS="verify;exec=/bin/true" "$YAWL_INSTALL_PATH" && chk=$?
+    fi
     YAWL_VERBS="make_wrapper=winello;exec=$WINE_INSTALL_PATH/bin/wine;wineserver=$WINE_INSTALL_PATH/bin/wineserver" "$YAWL_INSTALL_PATH"
     if [ "${chk}" != 0 ]; then
         Error "That didn't seem to work... try again?" && return 1
